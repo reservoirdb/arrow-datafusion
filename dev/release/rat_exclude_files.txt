@@ -9,6 +9,7 @@
 *.snap
 .github/ISSUE_TEMPLATE/*.md
 .github/pull_request_template.md
+.github/dependabot.yml
 ci/etc/rprofile
 ci/etc/*.patch
 ci/vcpkg/*.patch
