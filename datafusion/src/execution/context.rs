@@ -76,6 +76,7 @@ use crate::variable::{VarProvider, VarType};
 use crate::{dataframe::DataFrame, physical_plan::udaf::AggregateUDF};
 use parquet::arrow::ArrowWriter;
 use parquet::file::properties::WriterProperties;
+use sqlparser::dialect::{Dialect, PostgreSqlDialect};
 
 /// ExecutionContext is the main interface for executing queries with DataFusion. The context
 /// provides the following functionality:
@@ -207,7 +208,9 @@ impl ExecutionContext {
     ///
     /// This function is intended for internal use and should not be called directly.
     pub fn create_logical_plan(&self, sql: &str) -> Result<LogicalPlan> {
-        let statements = DFParser::parse_sql(sql)?;
+        let state = self.state.lock().unwrap().clone();
+        let dialect = state.config.sql_dialect.as_ref();
+        let statements = DFParser::parse_sql_with_dialect(sql, dialect)?;
 
         if statements.len() != 1 {
             return Err(DataFusionError::NotImplemented(
@@ -216,8 +219,7 @@ impl ExecutionContext {
         }
 
         // create a query planner
-        let state = self.state.lock().unwrap().clone();
-        let query_planner = SqlToRel::new(&state);
+        let query_planner = SqlToRel::new(&state, dialect);
         query_planner.statement_to_plan(&statements[0])
     }
 
@@ -628,6 +630,8 @@ pub struct ExecutionConfig {
     /// Should DataFusion repartition data using the join keys to execute joins in parallel
     /// using the provided `concurrency` level
     pub repartition_joins: bool,
+    /// The SQL dialect to use for parsing statements from text
+    sql_dialect: Arc<dyn Dialect + Send + Sync>,
 }
 
 impl ExecutionConfig {
@@ -655,6 +659,7 @@ impl ExecutionConfig {
             create_default_catalog_and_schema: true,
             information_schema: false,
             repartition_joins: true,
+            sql_dialect: Arc::new(PostgreSqlDialect {}),
         }
     }
 
@@ -736,6 +741,15 @@ impl ExecutionConfig {
     /// Enables or disables the use of repartitioning for joins to improve parallelism
     pub fn with_repartition_joins(mut self, enabled: bool) -> Self {
         self.repartition_joins = enabled;
+        self
+    }
+
+    /// Configures the SQL dialect used for parsing queries in the execution context
+    ///
+    /// NB: DataFusion *primarily* targets the Postgres SQL dialect.
+    /// Other dialects are not tested and so may cause unforeseen issues.
+    pub fn with_sql_dialect(mut self, dialect: Arc<dyn Dialect + Send + Sync>) -> Self {
+        self.sql_dialect = dialect;
         self
     }
 }
@@ -934,8 +948,14 @@ mod tests {
         let provider = test::create_table_dual();
         ctx.register_table("dual", provider)?;
 
-        let results =
-            plan_and_collect(&mut ctx, "SELECT @@version, @name FROM dual").await?;
+        let results = ctx
+            .table("dual")?
+            .select(vec![
+                Expr::ScalarVariable(vec!["@@version".to_owned()]),
+                Expr::ScalarVariable(vec!["@name".to_owned()]),
+            ])?
+            .collect()
+            .await?;
 
         let expected = vec![
             "+----------------------+------------------------+",

@@ -51,6 +51,7 @@ use sqlparser::ast::{
 };
 use sqlparser::ast::{ColumnDef as SQLColumnDef, ColumnOption};
 use sqlparser::ast::{OrderByExpr, Statement};
+use sqlparser::dialect::Dialect;
 use sqlparser::parser::ParserError::ParserError;
 
 use super::{
@@ -75,12 +76,16 @@ pub trait ContextProvider {
 /// SQL query planner
 pub struct SqlToRel<'a, S: ContextProvider> {
     schema_provider: &'a S,
+    dialect: &'a dyn Dialect,
 }
 
 impl<'a, S: ContextProvider> SqlToRel<'a, S> {
     /// Create a new query planner
-    pub fn new(schema_provider: &'a S) -> Self {
-        SqlToRel { schema_provider }
+    pub fn new(schema_provider: &'a S, dialect: &'a dyn Dialect) -> Self {
+        SqlToRel {
+            schema_provider,
+            dialect,
+        }
     }
 
     /// Generate a logical plan from an DataFusion SQL statement
@@ -1318,8 +1323,10 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
         let variable = ObjectName(variable.to_vec()).to_string();
         if variable.as_str().eq_ignore_ascii_case("tables") {
             if self.has_table("information_schema", "tables") {
-                let rewrite =
-                    DFParser::parse_sql("SELECT * FROM information_schema.tables;")?;
+                let rewrite = DFParser::parse_sql_with_dialect(
+                    "SELECT * FROM information_schema.tables;",
+                    self.dialect,
+                )?;
                 self.statement_to_plan(&rewrite[0])
             } else {
                 Err(DataFusionError::Plan(
@@ -1391,7 +1398,7 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
             select_list, where_clause
         );
 
-        let rewrite = DFParser::parse_sql(&query)?;
+        let rewrite = DFParser::parse_sql_with_dialect(&query, self.dialect)?;
         self.statement_to_plan(&rewrite[0])
     }
 
@@ -1522,6 +1529,7 @@ mod tests {
     use crate::datasource::empty::EmptyTable;
     use crate::{logical_plan::create_udf, sql::parser::DFParser};
     use functions::ScalarFunctionImplementation;
+    use sqlparser::dialect::PostgreSqlDialect;
 
     const PERSON_COLUMN_NAMES: &str =
         "id, first_name, last_name, age, state, salary, birth_date";
@@ -2645,8 +2653,8 @@ mod tests {
     }
 
     fn logical_plan(sql: &str) -> Result<LogicalPlan> {
-        let planner = SqlToRel::new(&MockContextProvider {});
-        let result = DFParser::parse_sql(&sql);
+        let planner = SqlToRel::new(&MockContextProvider {}, &PostgreSqlDialect {});
+        let result = DFParser::parse_sql_with_dialect(&sql, planner.dialect);
         let ast = result.unwrap();
         planner.statement_to_plan(&ast[0])
     }

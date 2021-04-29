@@ -21,7 +21,7 @@
 
 use sqlparser::{
     ast::{ColumnDef, ColumnOptionDef, Statement as SQLStatement, TableConstraint},
-    dialect::{keywords::Keyword, Dialect, GenericDialect},
+    dialect::{keywords::Keyword, Dialect},
     parser::{Parser, ParserError},
     tokenizer::{Token, Tokenizer},
 };
@@ -76,12 +76,6 @@ pub struct DFParser<'a> {
 }
 
 impl<'a> DFParser<'a> {
-    /// Parse the specified tokens
-    pub fn new(sql: &str) -> Result<Self, ParserError> {
-        let dialect = &GenericDialect {};
-        DFParser::new_with_dialect(sql, dialect)
-    }
-
     /// Parse the specified tokens with dialect
     pub fn new_with_dialect(
         sql: &str,
@@ -96,12 +90,6 @@ impl<'a> DFParser<'a> {
     }
 
     /// Parse a SQL statement and produce a set of statements with dialect
-    pub fn parse_sql(sql: &str) -> Result<Vec<Statement>, ParserError> {
-        let dialect = &GenericDialect {};
-        DFParser::parse_sql_with_dialect(sql, dialect)
-    }
-
-    /// Parse a SQL statement and produce a set of statements
     pub fn parse_sql_with_dialect(
         sql: &str,
         dialect: &dyn Dialect,
@@ -298,9 +286,10 @@ impl<'a> DFParser<'a> {
 mod tests {
     use super::*;
     use sqlparser::ast::{DataType, Ident};
+    use sqlparser::dialect::PostgreSqlDialect;
 
     fn expect_parse_ok(sql: &str, expected: Statement) -> Result<(), ParserError> {
-        let statements = DFParser::parse_sql(sql)?;
+        let statements = DFParser::parse_sql_with_dialect(sql, &PostgreSqlDialect {})?;
         assert_eq!(
             statements.len(),
             1,
@@ -312,7 +301,7 @@ mod tests {
 
     /// Parses sql and asserts that the expected error message was found
     fn expect_parse_error(sql: &str, expected_error: &str) {
-        match DFParser::parse_sql(sql) {
+        match DFParser::parse_sql_with_dialect(sql, &PostgreSqlDialect {}) {
             Ok(statements) => {
                 panic!(
                     "Expected parse error for '{}', but was successful: {:?}",
