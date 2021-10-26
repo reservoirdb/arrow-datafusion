@@ -48,4 +48,4 @@ datafusion = { path = "../../../datafusion" }
 [dev-dependencies]
 
 [build-dependencies]
-tonic-build = { version = "0.4" }
+tonic-build = { version = "0.6" }
