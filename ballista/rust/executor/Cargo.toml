@@ -41,7 +41,7 @@ snmalloc-rs = {version = "0.2", features= ["cache-friendly"], optional = true}
 tempfile = "3"
 tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-stream = "0.1"
-tonic = "0.4"
+tonic = "0.6"
 uuid = { version = "0.8", features = ["v4"] }
 
 arrow = { git = "https://github.com/apache/arrow-rs", rev = "c3fe3bab9905739fdda75301dab07a18c91731bd" }
