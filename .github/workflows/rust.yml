@@ -39,7 +39,7 @@ jobs:
         # "1" means line tables only, which is useful for panic tracebacks.
         RUSTFLAGS: "-C debuginfo=1"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
       - name: Cache Cargo
         uses: actions/cache@v2
         with:
@@ -89,7 +89,7 @@ jobs:
         # "1" means line tables only, which is useful for panic tracebacks.
         RUSTFLAGS: "-C debuginfo=1"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
         with:
           submodules: true
       - name: Cache Cargo
@@ -141,7 +141,7 @@ jobs:
         os: [windows-latest, macos-latest]
         rust: [stable]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
         with:
           submodules: true
       # TODO: this won't cache anything, which is expensive. Setup this action
@@ -166,7 +166,7 @@ jobs:
     container:
       image: amd64/rust
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
       - name: Setup toolchain
         run: |
           rustup toolchain install stable
@@ -190,7 +190,7 @@ jobs:
         # "1" means line tables only, which is useful for panic tracebacks.
         RUSTFLAGS: "-C debuginfo=1"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
         with:
           submodules: true
       - name: Cache Cargo
@@ -224,7 +224,7 @@ jobs:
         arch: [amd64]
         rust: [nightly-2021-03-24]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
         with:
           submodules: true
       - uses: actions/cache@v2
@@ -258,7 +258,7 @@ jobs:
         arch: [amd64]
         rust: [stable]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
         with:
           submodules: true
       - name: Cache Cargo
